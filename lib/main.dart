@@ -40,20 +40,35 @@ class _HomePageState extends State<HomePage> {
   // ignore: type_annotate_public_apis
   initState() {
     super.initState();
-    productResponse = ProductResponse(
-        status: "SUCCESS",
-        value: Product(
-            barcode: "1234",
-            description: "Something",
-            averageCost: "2.2345",
-            price: "2.1",
-            stock: 0));
+    // productResponse = ProductResponse(
+    //     status: "SUCCESS",
+    //     value: Product(
+    //         barcode: "1234",
+    //         description: "Something",
+    //         averageCost: "2.2345",
+    //         price: "2.1",
+    //         stock: 0));
   }
 
   @override
   Widget build(BuildContext context) {
     Product product;
     if (productResponse != null) product = productResponse.value;
+
+    Future fabPressed() async {
+      try {
+        print('PRESSED');
+        var options = ScanOptions();
+
+        var result = await BarcodeScanner.scan(options: options);
+        var res = await getProduct(result.rawContent);
+        print(res.body);
+        var productRes = ProductResponse.fromJson(json.decode(res.body));
+        setState(() => productResponse = productRes);
+      } on PlatformException catch (e) {
+        print(e);
+      }
+    }
 
     Future<void> _showMyDialog() async {
       return showDialog<void>(
@@ -175,19 +190,6 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: new FloatingActionButton(
           child: new Icon(Icons.camera), onPressed: fabPressed),
     );
-  }
-
-  Future fabPressed() async {
-    try {
-      var options = ScanOptions();
-
-      var result = await BarcodeScanner.scan(options: options);
-      var res = await getProduct(result.rawContent);
-      var productResponse = ProductResponse.fromJson(json.decode(res.body));
-      setState(() => productResponse = productResponse);
-    } on PlatformException catch (e) {
-      print(e);
-    }
   }
 }
 
