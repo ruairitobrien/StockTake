@@ -1,3 +1,5 @@
+import 'package:http/http.dart' as http;
+
 class Product {
   final String barcode;
   final String description;
@@ -38,4 +40,10 @@ class ProductResponse {
           json['status'] == "SUCCESS" ? Product.fromJson(json['value']) : null,
     );
   }
+}
+
+Future<http.Response> getProduct(String barCode) {
+  return http.get(
+      'https://script.google.com/macros/s/AKfycbyPSw_kcKCK7_tY453y4J1U13NR5VZssPhwaJYdPQHuhvDwHNM/exec?barcode=' +
+          barCode);
 }
