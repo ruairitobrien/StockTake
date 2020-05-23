@@ -4,50 +4,10 @@ import 'package:barcode_scan/barcode_scan.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:stocktake/models/product.dart';
 
 void main() {
   runApp(Stocktake());
-}
-
-class Product {
-  final String barcode;
-  final String description;
-  final String averageCost;
-  final String price;
-  final int stock;
-
-  Product(
-      {this.barcode,
-      this.description,
-      this.averageCost,
-      this.price,
-      this.stock});
-
-  factory Product.fromJson(Map<String, dynamic> json) {
-    return Product(
-        barcode: json['barcode'],
-        description: json['description'],
-        averageCost: json['averageCost'],
-        price: json['price'],
-        stock: json['stock']);
-  }
-}
-
-class ProductResponse {
-  final String status;
-  final Product value;
-
-  ProductResponse({
-    this.status,
-    this.value,
-  });
-
-  factory ProductResponse.fromJson(Map<String, dynamic> json) {
-    return ProductResponse(
-      status: json['status'],
-      value: Product.fromJson(json['value']),
-    );
-  }
 }
 
 class Stocktake extends StatelessWidget {
@@ -95,6 +55,38 @@ class _HomePageState extends State<HomePage> {
     Product product;
     if (productResponse != null) product = productResponse.value;
 
+    Future<void> _showMyDialog() async {
+      return showDialog<void>(
+        context: context,
+        barrierDismissible: false, // user must tap button!
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Edit Stock Count'),
+            content: SingleChildScrollView(
+              child: ListBody(
+                children: <Widget>[],
+              ),
+            ),
+            actions: <Widget>[
+              FlatButton(
+                child: Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              FlatButton(
+                child: Text('Save'),
+                color: Colors.blue,
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
+
     var contentList = <Widget>[
       if (productResponse == null)
         Center(
@@ -114,43 +106,53 @@ class _HomePageState extends State<HomePage> {
               ),
               ListTile(
                 title: Text('Current stock: ${product.stock}'),
-                trailing: Icon(Icons.edit),
+                trailing: IconButton(
+                  icon: Icon(Icons.edit),
+                  onPressed: () {
+                    _showMyDialog();
+                  },
+                ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    vertical: 16.0, horizontal: 16.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      TextFormField(
-                        decoration: const InputDecoration(
-                          hintText: 'Enter number of items to add',
+              Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 16.0, horizontal: 16.0),
+                              child: TextFormField(
+                                decoration: const InputDecoration(
+                                  hintText: 'Enter number of items to add',
+                                ),
+                                validator: (value) {
+                                  if (value.isEmpty) {
+                                    return 'Please enter an amount';
+                                  }
+                                  return null;
+                                },
+                              )),
                         ),
-                        validator: (value) {
-                          if (value.isEmpty) {
-                            return 'Please enter an amount';
-                          }
-                          return null;
-                        },
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                        child: IconButton(
-                          icon: Icon(Icons.add_box),
-                          color: Colors.lightBlue,
-                          iconSize: 48,
-                          tooltip: 'Add stock',
-                          onPressed: () {
-                            setState(() {
-                              if (_formKey.currentState.validate()) {}
-                            });
-                          },
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: IconButton(
+                            icon: Icon(Icons.add_box),
+                            color: Colors.blue,
+                            iconSize: 48,
+                            tooltip: 'Add stock',
+                            onPressed: () {
+                              setState(() {
+                                if (_formKey.currentState.validate()) {}
+                              });
+                            },
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    )
+                  ],
                 ),
               ),
             ],
