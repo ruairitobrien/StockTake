@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:barcode_scan/barcode_scan.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:stocktake/models/product.dart';
 
@@ -34,7 +33,13 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _formKey = GlobalKey<FormState>();
+  final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
+  final fetchProductErrorSnackBar = SnackBar(
+    content: Text('An error occurde red getting product'),
+    backgroundColor: Colors.redAccent,
+  );
   ProductResponse productResponse;
+  bool isLoading = false;
 
   @override
   // ignore: type_annotate_public_apis
@@ -57,16 +62,25 @@ class _HomePageState extends State<HomePage> {
 
     Future fabPressed() async {
       try {
-        print('PRESSED');
         var options = ScanOptions();
-
         var result = await BarcodeScanner.scan(options: options);
-        var res = await getProduct(result.rawContent);
-        print(res.body);
-        var productRes = ProductResponse.fromJson(json.decode(res.body));
-        setState(() => productResponse = productRes);
-      } on PlatformException catch (e) {
-        print(e);
+        var hasResult = !(result.rawContent?.isEmpty ?? true);
+        if (hasResult) {
+          setState(() => isLoading = true);
+          var res = await getProduct(result.rawContent);
+          print(res);
+          print(res.body);
+          var productRes = ProductResponse.fromJson(json.decode(res.body));
+          if (productRes.status == "SUCCESS") {
+            setState(() => productResponse = productRes);
+          } else {
+            _scaffoldKey.currentState.showSnackBar(fetchProductErrorSnackBar);
+          }
+          setState(() => isLoading = false);
+        }
+      } on Exception {
+        setState(() => isLoading = false);
+        _scaffoldKey.currentState.showSnackBar(fetchProductErrorSnackBar);
       }
     }
 
@@ -176,16 +190,21 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         title: Text('Stocktake'),
       ),
       body: new Padding(
         padding: const EdgeInsets.all(24.0),
-        child: new Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            mainAxisSize: MainAxisSize.max,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: contentList),
+        child: isLoading
+            ? Center(
+                child: CircularProgressIndicator(),
+              )
+            : new Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisSize: MainAxisSize.max,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: contentList),
       ),
       floatingActionButton: new FloatingActionButton(
           child: new Icon(Icons.camera), onPressed: fabPressed),

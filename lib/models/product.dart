@@ -34,7 +34,8 @@ class ProductResponse {
   factory ProductResponse.fromJson(Map<String, dynamic> json) {
     return ProductResponse(
       status: json['status'],
-      value: Product.fromJson(json['value']),
+      value:
+          json['status'] == "SUCCESS" ? Product.fromJson(json['value']) : null,
     );
   }
 }
