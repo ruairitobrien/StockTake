@@ -1,4 +1,5 @@
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class Product {
   final String barcode;
@@ -42,8 +43,16 @@ class ProductResponse {
   }
 }
 
-Future<http.Response> getProduct(String barCode) {
+Future<http.Response> getProduct(String barcode) {
   return http.get(
       'https://script.google.com/macros/s/AKfycbyPSw_kcKCK7_tY453y4J1U13NR5VZssPhwaJYdPQHuhvDwHNM/exec?barcode=' +
-          barCode);
+          barcode);
+}
+
+Future<http.Response> updateProduct(String barcode, int stock, bool add) {
+  print(stock);
+  return http.post(
+      Uri.encodeFull(
+          'https://script.google.com/macros/s/AKfycbyPSw_kcKCK7_tY453y4J1U13NR5VZssPhwaJYdPQHuhvDwHNM/exec'),
+      body: json.encode({'barcode': barcode, 'stockCount': stock, 'add': add}));
 }

@@ -14,6 +14,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final _formKey = GlobalKey<FormState>();
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
+  final stockInputController = TextEditingController();
+  final stockEditInputController = TextEditingController();
   final fetchProductErrorSnackBar = SnackBar(
     content: Text('An error occurde red getting product'),
     backgroundColor: Colors.redAccent,
@@ -24,14 +26,21 @@ class _HomePageState extends State<HomePage> {
   @override
   initState() {
     super.initState();
-    productResponse = ProductResponse(
-        status: "SUCCESS",
-        value: Product(
-            barcode: "1234",
-            description: "Something",
-            averageCost: "2.2345",
-            price: "2.1",
-            stock: 0));
+    // productResponse = ProductResponse(
+    //     status: "SUCCESS",
+    //     value: Product(
+    //         barcode: "1234",
+    //         description: "Something",
+    //         averageCost: "2.2345",
+    //         price: "2.1",
+    //         stock: 0));
+  }
+
+  @override
+  void dispose() {
+    stockInputController.dispose();
+    stockEditInputController.dispose();
+    super.dispose();
   }
 
   @override
@@ -39,24 +48,58 @@ class _HomePageState extends State<HomePage> {
     Product product;
     if (productResponse != null) product = productResponse.value;
 
-    Future fabPressed() async {
+    Future _fetchProduct(String barcode) async {
+      setState(() => isLoading = true);
+      var res = await getProduct(barcode);
+      print(res);
+      print(res.body);
+      var productRes = ProductResponse.fromJson(json.decode(res.body));
+      if (productRes.status == "SUCCESS") {
+        setState(() => productResponse = productRes);
+      } else {
+        _scaffoldKey.currentState.showSnackBar(fetchProductErrorSnackBar);
+      }
+      setState(() => isLoading = false);
+    }
+
+    Future _fabPressed() async {
       try {
         var options = ScanOptions();
         var result = await BarcodeScanner.scan(options: options);
         var hasResult = !(result.rawContent?.isEmpty ?? true);
         if (hasResult) {
-          setState(() => isLoading = true);
-          var res = await getProduct(result.rawContent);
-          print(res);
-          print(res.body);
-          var productRes = ProductResponse.fromJson(json.decode(res.body));
-          if (productRes.status == "SUCCESS") {
-            setState(() => productResponse = productRes);
-          } else {
-            _scaffoldKey.currentState.showSnackBar(fetchProductErrorSnackBar);
-          }
-          setState(() => isLoading = false);
+          _fetchProduct(result.rawContent);
         }
+      } on Exception {
+        setState(() => isLoading = false);
+        _scaffoldKey.currentState.showSnackBar(fetchProductErrorSnackBar);
+      }
+    }
+
+    Future<void> _onAdd() async {
+      if (_formKey.currentState.validate()) {
+        try {
+          setState(() => isLoading = true);
+          print(stockInputController.text);
+          await updateProduct(
+              product.barcode, int.parse(stockInputController.text), true);
+          await _fetchProduct(product.barcode);
+          stockInputController.clear();
+        } on Exception {
+          setState(() => isLoading = false);
+          _scaffoldKey.currentState.showSnackBar(fetchProductErrorSnackBar);
+        }
+      }
+    }
+
+    Future<void> _onUpdate() async {
+      try {
+        setState(() => isLoading = true);
+        print(stockEditInputController.text);
+        await updateProduct(
+            product.barcode, int.parse(stockEditInputController.text), false);
+        await _fetchProduct(product.barcode);
+        stockEditInputController.clear();
       } on Exception {
         setState(() => isLoading = false);
         _scaffoldKey.currentState.showSnackBar(fetchProductErrorSnackBar);
@@ -72,7 +115,13 @@ class _HomePageState extends State<HomePage> {
             title: Text('Edit Stock Count'),
             content: SingleChildScrollView(
               child: ListBody(
-                children: <Widget>[],
+                children: <Widget>[
+                  Text("Current stock: ${product.stock}"),
+                  TextField(
+                    controller: stockEditInputController,
+                    keyboardType: TextInputType.number,
+                  )
+                ],
               ),
             ),
             actions: <Widget>[
@@ -87,6 +136,7 @@ class _HomePageState extends State<HomePage> {
                 color: Colors.blue,
                 onPressed: () {
                   Navigator.of(context).pop();
+                  _onUpdate();
                 },
               ),
             ],
@@ -133,6 +183,8 @@ class _HomePageState extends State<HomePage> {
                               padding: const EdgeInsets.symmetric(
                                   vertical: 16.0, horizontal: 16.0),
                               child: TextFormField(
+                                controller: stockInputController,
+                                keyboardType: TextInputType.number,
                                 decoration: const InputDecoration(
                                   hintText: 'Enter number of items to add',
                                 ),
@@ -151,11 +203,7 @@ class _HomePageState extends State<HomePage> {
                             color: Colors.blue,
                             iconSize: 48,
                             tooltip: 'Add stock',
-                            onPressed: () {
-                              setState(() {
-                                if (_formKey.currentState.validate()) {}
-                              });
-                            },
+                            onPressed: _onAdd,
                           ),
                         ),
                       ],
@@ -186,7 +234,7 @@ class _HomePageState extends State<HomePage> {
                 children: contentList),
       ),
       floatingActionButton: new FloatingActionButton(
-          child: new Icon(Icons.camera), onPressed: fabPressed),
+          child: new Icon(Icons.camera), onPressed: _fabPressed),
     );
   }
 }
